@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Page de test</title>
+		<style>
+			body { background-color: rgb(67, 67, 67); }
+			h1 { color: rgb(41, 109, 255); text-align: center; }
+			p { color: white; font-family: verdana; font-size: 20px; }
+			.btn-youtube
+			{
+				font-size: 20px;
+				padding: 10px 20px;
+				background-color: #ff1100;
+				color: white;
+				border: none;
+				cursor: pointer;
+				margin: 20px;
+			}
+			.btn-youtube:hover
+			{
+				background-color: #d7372f;
+			}
+			.btn-other
+			{
+				font-size: 20px;
+				padding: 10px 20px;
+				background-color: #1155cc;
+				color: white;
+				border: none;
+				cursor: pointer;
+				margin: 20px;
+			}
+			.btn-other:hover
+			{
+				background-color: #1a74d4;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Titre 1</h1>
+
+		<p>Premier paragrapher dans le body, juste apres le titre 1.</p>
+
+		<button class="btn-youtube" onclick="window.open('https://www.youtube.com/', '_blank')">Youtube</button>
+
+		<p>
+			Deuxieme paragraphe avec maintenant<br>
+			un retour a la ligne,<br>
+			et un autre, le tout apres le bouton
+		</p>
+
+		<button class="btn-other" onclick="window.location.href='pages/autre.html'">Autre page</button>
+	</body>
+</html>
