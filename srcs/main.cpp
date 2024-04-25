@@ -2,10 +2,12 @@
 #include "colors.hpp"
 #include "Configuration/ConfigCheck.hpp"
 #include "Configuration/ConfigParse.hpp"
+#include "Server/InitializeServer.hpp"
+#include "Server/Server.hpp"
 
-void print_struct_vals(const std::vector<t_server>& servers) 
+void print_struct_vals(const std::vector<t_server>& servers)
 {
-	for (size_t i = 0; i < servers.size(); ++i) 
+	for (size_t i = 0; i < servers.size(); ++i)
 	{
 		std::cout << ">" << servers[i].server_name << "<" << std::endl << std::endl;
 		std::cout << ">" << servers[i].port << "<" << std::endl << std::endl;
@@ -15,7 +17,7 @@ void print_struct_vals(const std::vector<t_server>& servers)
 			std::cout << ">" << error_page_it->first << "< >" << error_page_it->second << "<" << std::endl;
 		std::cout << std::endl;
 
-		for (std::map<std::string, std::map<std::string, std::string> >::const_iterator route_it = servers[i].routes.begin(); route_it != servers[i].routes.end(); ++route_it) 
+		for (std::map<std::string, std::map<std::string, std::string> >::const_iterator route_it = servers[i].routes.begin(); route_it != servers[i].routes.end(); ++route_it)
 		{
 			std::cout << ">" << route_it->first << "<" << std::endl;
 			const std::map<std::string, std::string>& sub_routes = route_it->second;
@@ -47,6 +49,20 @@ int main(int argc, char *argv[])
 		std::cout << "--------------------------------------------------" << std::endl << std::endl;
 		print_struct_vals(parse.getServersParsed());
 		std::cout << "--------------------------------------------------" << std::endl << std::endl;
+		// Création d'une instance de serveur
+		Server server;
+
+		// Initialisation du serveur avec les données parsées du fichier de configuration
+		initializeServer(server, parse.getServersParsed());
+
+		// Démarrage du serveur
+		server.start();
+
+		// Gestion des connexions entrantes
+		server.handleConnections();
+
+		// Arrêt du serveur
+		//server.stop();
 	}
 	catch (std::exception &e)
 	{
