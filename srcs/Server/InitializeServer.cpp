@@ -11,7 +11,7 @@ void initializeServer(Server& server, const std::vector<s_server>& serversParsed
 	{
 		const s_server& parsedServer = *it;
 
-		// Utilisez les méthodes définies dans la classe Server pour initialiser ses membres
+		// Méthodes définies dans la classe Server pour initialiser ses membres
 		server.setName(parsedServer.server_name);
 		server.setPort(parsedServer.port);
 		server.setMaxBodySize(parsedServer.client_max_body_size);

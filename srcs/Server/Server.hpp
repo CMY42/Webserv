@@ -35,6 +35,7 @@ public:
 	void start();
 	void stop();
 	void handleConnections();
+	void handleClient(int client_socket);
 };
 
 #endif

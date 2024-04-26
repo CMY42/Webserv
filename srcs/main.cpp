@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 		server.handleConnections();
 
 		// Arrêt du serveur
-		//server.stop();
+		server.stop();
 	}
 	catch (std::exception &e)
 	{
