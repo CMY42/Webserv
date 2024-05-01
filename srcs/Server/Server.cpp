@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <vector>
+#include "../../Partie_C/PC_1.hpp"
 
 // Constructeur
 Server::Server(const std::string& name, int p, size_t max_body_size, const std::map<int, std::string>& errors, const std::map<std::string, std::map<std::string, std::string> >& rt)
@@ -124,23 +125,26 @@ void Server::handleConnections()
 void Server::handleClient(int client_socket)
 {
 	// Placeholder pour le traitement du client
-	char buffer[1024];
+	/*char buffer[1024];
 	int bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
 	if (bytes_received <= 0)
 	{
 		// Erreur ou connexion fermée par le client
 		close(client_socket);
 		return;
-	}
+	}*/
 
-std::cout << "Bytes received: " << bytes_received << std::endl;
+	//std::cout << "Bytes received: " << bytes_received << std::endl;
 
 	// Traitement des données reçues (par exemple, analyse des requêtes HTTP)
 	//POUR ADRIEN ???
 
 	// Génération de la réponse appropriée
-	std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello World\n";
+	//std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello World\n";
 
 	// Envoi de la réponse au client
-	send(client_socket, response.c_str(), response.length(), 0);
+	//send(client_socket, response.c_str(), response.length(), 0);
+
+	std::cout << std::endl << "-------------------- Partie C --------------------" << std::endl << std::endl;
+    Part_C part_c(client_socket, this->server_name, this->port, this->client_max_body_size, this->error_pages, this->routes);
 }

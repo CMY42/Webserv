@@ -9,7 +9,7 @@ CC = g++
 CPPFLAGS = -Wall -Wextra -Werror -std=c++98
 RM = rm -rf
 
-SRCS = srcs/main.cpp $(wildcard srcs/Configuration/*.cpp) $(wildcard srcs/Server/*.cpp)
+SRCS = main.cpp $(wildcard srcs/Configuration/*.cpp) $(wildcard srcs/Server/*.cpp) $(wildcard Partie_C/*.cpp)
 
 OBJS = $(SRCS:.cpp=.o)
 
