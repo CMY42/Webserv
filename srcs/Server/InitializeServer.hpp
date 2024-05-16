@@ -5,6 +5,6 @@
 #include "../Configuration/ConfigParse.hpp"
 #include "Server.hpp"
 
-void initializeServer(Server& server, const std::vector<t_server>& serversParsed);
+void initializeServer(Server& server, const t_server& parsedServer);
 
 #endif

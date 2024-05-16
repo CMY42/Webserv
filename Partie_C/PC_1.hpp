@@ -35,7 +35,7 @@ public:
     void init();
     void parse(const std::string& requestText, s_server2& config);
     std::string getMultiPartBoundary();
-    std::map<std::string, std::string>  parseMultiPartBody(const std::string &bodyLines);
+    void parseMultiPartBody(std::string bodyLines);
     std::map<std::string, std::string> parseUrlEncoded(const std::string& data);
     void print_parse();
     void method_GET();

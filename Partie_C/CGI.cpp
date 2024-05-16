@@ -44,6 +44,8 @@ char path[PATH_MAX];
     return pathStr.substr(0, lastSlash); // Retourne le chemin du répertoire parent
 }
 
+#include <sys/wait.h> // Nécessaire pour waitpid et les macros associées
+
 void Part_C::execute_cgi()
 {
     std::cout << std::endl << "-------------------> CGI" << std::endl;
@@ -52,14 +54,12 @@ void Part_C::execute_cgi()
     pid_t pid;
     char buf;
 
-    // Création d'un pipe pour capturer la sortie du script CGI
     if (pipe(pipefd) == -1)
     {
         perror("pipe");
         exit(EXIT_FAILURE);
     }
 
-    // Création d'un processus enfant
     pid = fork();
     if (pid == -1)
     {
@@ -69,50 +69,48 @@ void Part_C::execute_cgi()
 
     if (pid == 0)
     {
-        // Processus enfant
-
-        // Redirection de stdout vers le pipe
-        close(pipefd[0]); // Ferme la lecture du pipe, non utilisée dans l'enfant
+        alarm(10);
+        close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);
 
-        // Chemin absolu vers le script CGI
-        //std::string path_ws = "/the_ultimate_webserv";
-        std::string parentDir = getExecutableParentDir(); // Suppose que cette fonction retourne std::string
-        std::string scriptPath = parentDir + "/the_ultimate_webserv" + uri; // Concaténation correcte
+        std::string parentDir = getExecutableParentDir();
+        std::string newBP = basePath.substr(1);
+        std::string scriptPath = parentDir + newBP + uri;
         const char* cScriptPath = scriptPath.c_str();
 
-        // Préparer les arguments pour execve
         char *args[] = {const_cast<char *>("perl"), const_cast<char *>(cScriptPath), NULL};
-
-        // Préparer les variables d'environnement
         char *envp[] = { NULL };
 
-        // Exécuter le script CGI en Perl
         execve("/usr/bin/perl", args, envp);
-
-        // execve ne retourne que s'il y a une erreur
         perror("execve");
         exit(EXIT_FAILURE);
     }
     else
     {
-        // Processus parent
-
-        // Fermeture de l'extrémité d'écriture du pipe
         close(pipefd[1]);
-
-        // Lire la sortie du script CGI
         std::ostringstream oss;
         while (read(pipefd[0], &buf, 1) > 0)
         {
             std::cout.put(buf);
             oss.put(buf);
         }
-        cgi_content = oss.str();
         close(pipefd[0]);
 
-        // Attendre que le processus enfant termine
-        waitpid(pid, NULL, 0);
+        int statusPID;
+        waitpid(pid, &statusPID, 0);
+        if (WIFSIGNALED(statusPID))
+        {
+            std::cerr << "XXX Erreur détectée XXX" << std::endl;
+            status = 500; // Conflict
+		    throw Part_C::InvalidRequestException("Error CGI 500");
+        }
+        else if (WIFEXITED(statusPID) && WEXITSTATUS(statusPID) != 0)
+        {
+            std::cerr << "XXX Erreur détectée XXX" << std::endl;
+            status = 500; // Conflict
+		    throw Part_C::InvalidRequestException("Error CGI 500");
+        }
+        cgi_content = oss.str();
     }
 }

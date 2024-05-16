@@ -36,6 +36,9 @@ public:
 	void stop();
 	void handleConnections();
 	void handleClient(int client_socket);
+
+	int getListeningSocket() const { return _listening_socket; }
+
 };
 
 #endif

@@ -15,9 +15,11 @@ void Part_C::method_POST()
 {
     std::cout << std::endl << "-------------------> POST" << std::endl;
 
-    std::string upload_path = "./the_ultimate_webserv/post/" + post_file_name;
+    std::string upload_path = basePath + uri + "/" + post_file_name;
+    std::cout << std::endl << "upload_path : " << upload_path << std::endl;
 	if (checkFileExists(upload_path))
 	{
+        std::cout << "-----upload_path : " << upload_path << "\n";
 		status= 409; // Conflict
 		throw Part_C::InvalidRequestException("Error Post 409");
 	}
@@ -44,8 +46,8 @@ void Part_C::method_DELETE()
 
     // L'URI de la requête doit être analysée pour déterminer la ressource à supprimer.
     // Ici, nous supposons que l'URI contient le nom du fichier à supprimer dans un certain répertoire.
-    std::string delete_path = "./the_ultimate_webserv" + uri; // delete_file_name doit être extrait de l'URI
-    std::cout << delete_path << std::endl;;
+    std::string delete_path = basePath + uri; // delete_file_name doit être extrait de l'URI
+    std::cout << delete_path << std::endl;
 
     if (!checkFileExists(delete_path))
     {

@@ -1,5 +1,10 @@
 #include <iostream>
 #include <csignal>
+#include <vector>
+#include <pthread.h> // Pour la gestion des threads
+#include <fcntl.h> // Pour fcntl() et O_NONBLOCK
+#include <poll.h> // Pour poll()
+#include <sys/socket.h> // Pour accept()
 #include "srcs/colors.hpp"
 #include "srcs/Configuration/ConfigCheck.hpp"
 #include "srcs/Configuration/ConfigParse.hpp"
@@ -9,28 +14,23 @@
 // Création d'une instance de serveur
 Server server;
 
-void print_struct_vals(const std::vector<t_server>& servers)
+// Structure pour passer les données aux threads
+struct ThreadData
 {
-	for (size_t i = 0; i < servers.size(); ++i)
-	{
-		std::cout << ">" << servers[i].server_name << "<" << std::endl << std::endl;
-		std::cout << ">" << servers[i].port << "<" << std::endl << std::endl;
-		std::cout << ">" << servers[i].client_max_body_size << "<" << std::endl << std::endl;
+	int client_socket;
+	// Ajoutez d'autres données nécessaires ici
+};
 
-		for (std::map<int, std::string>::const_iterator error_page_it = servers[i].error_pages.begin(); error_page_it != servers[i].error_pages.end(); ++error_page_it)
-			std::cout << ">" << error_page_it->first << "< >" << error_page_it->second << "<" << std::endl;
-		std::cout << std::endl;
-
-		for (std::map<std::string, std::map<std::string, std::string> >::const_iterator route_it = servers[i].routes.begin(); route_it != servers[i].routes.end(); ++route_it)
-		{
-			std::cout << ">" << route_it->first << "<" << std::endl;
-			const std::map<std::string, std::string>& sub_routes = route_it->second;
-			for (std::map<std::string, std::string>::const_iterator sub_route_it = sub_routes.begin(); sub_route_it != sub_routes.end(); ++sub_route_it)
-				std::cout << ">" << sub_route_it->first << "< >" << sub_route_it->second << "<" << std::endl;
-			std::cout << std::endl;
-		}
-		std::cout << std::endl << "........................." << std::endl << std::endl;
-	}
+// Méthode pour gérer une connexion dans un thread
+void* handleClientThread(void* arg)
+{
+	ThreadData* data = (ThreadData*)arg;
+	int client_socket = data->client_socket;
+	// Gérer la connexion du client ici
+	server.handleClient(client_socket);
+	close(client_socket);
+	delete data;
+	pthread_exit(NULL);
 }
 
 void signal_handler(int signal)
@@ -59,24 +59,80 @@ int main(int argc, char *argv[])
 	}
 	try
 	{
-		ConfigCheck		config(config_file);
-		ConfigParse		parse(config);
-		std::cout << "--------------------------------------------------" << std::endl << std::endl;
-		print_struct_vals(parse.getServersParsed());
-		std::cout << "--------------------------------------------------" << std::endl << std::endl;
+		ConfigCheck config(config_file);
+		ConfigParse parse(config);
 
-		// Initialisation du serveur avec les données parsées du fichier de configuration
-		initializeServer(server, parse.getServersParsed());
+		// Création d'une instance de serveur pour chaque configuration de serveur
+		const std::vector<t_server>& servers = parse.getServersParsed();
+		std::vector<Server> serverInstances;
+		for (size_t i = 0; i < servers.size(); ++i)
+		{
+			Server newServer;
+			initializeServer(newServer, servers[i]); // Passer un seul serveur à la fois
+			newServer.start(); // Démarrer le serveur
+			serverInstances.push_back(newServer);
+		}
 
 		// Gestionnaire de signal
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
 
-		// Démarrage du serveur
-		server.start();
+		// Tableau de threads pour gérer les connexions
+		std::vector<pthread_t> threads;
 
-		// Gestion des connexions entrantes
-		server.handleConnections();
+		// Boucle pour accepter les connexions et les gérer
+		while (true)
+		{
+			for (size_t i = 0; i < serverInstances.size(); ++i)
+			{
+				// Utilisation de poll() pour attendre les événements d'entrée/sortie
+				std::vector<pollfd> fds;
+				pollfd listening_fd;
+				listening_fd.fd = serverInstances[i].getListeningSocket();
+				listening_fd.events = POLLIN;
+				listening_fd.revents = 0;
+				fds.push_back(listening_fd);
+
+				int activity = poll(&fds[0], fds.size(), -1);
+				if (activity < 0)
+				{
+					std::cerr << "Error in poll()" << std::endl;
+					continue;
+				}
+
+				// Si le socket d'écoute a une activité
+				if (fds[0].revents & POLLIN)
+				{
+					// Accepter la nouvelle connexion
+					int client_socket = accept(serverInstances[i].getListeningSocket(), NULL, NULL);
+					if (client_socket < 0)
+					{
+						std::cerr << "Error accepting connection" << std::endl;
+						continue;
+					}
+
+					// Configurer le socket en mode non bloquant
+					fcntl(client_socket, F_SETFL, O_NONBLOCK);
+
+					// Créer un thread pour gérer la connexion de manière asynchrone
+					pthread_t thread;
+					ThreadData* data = new ThreadData;
+					data->client_socket = client_socket;
+					pthread_create(&thread, NULL, handleClientThread, (void*)data);
+					threads.push_back(thread);
+				}
+			}
+
+			// Supprimer les threads terminés de la liste
+			for (std::vector<pthread_t>::iterator it = threads.begin(); it != threads.end(); )
+			{
+				pthread_t thread = *it;
+				if (pthread_tryjoin_np(thread, NULL) == 0)
+					it = threads.erase(it);
+				else
+					++it;
+			}
+		}
 	}
 	catch (std::exception &e)
 	{

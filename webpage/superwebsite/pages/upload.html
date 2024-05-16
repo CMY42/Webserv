@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload page</title>
+	<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <h1>Upload Page</h1>
+
+	<form action="/" method="post" enctype="multipart/form-data" class="form-container">
+		<input type="file" name="fileToUpload" id="fileToUpload" style="display: none;">
+		<input type="button" value="Browse..." onclick="document.getElementById('fileToUpload').click();" class="file-input-btn">
+		<input type="text" id="fileNameDisplay" value="No file selected" readonly class="file-display-text">
+		<input type="submit" name="submit" value="Upload File" class="file-input-btn">
+	</form>
+	
+	<script>
+		document.getElementById('fileToUpload').addEventListener('change', function() {
+			var fileName = this.value.split('\\').pop();
+			document.getElementById('fileNameDisplay').value = fileName || "No file selected";
+		});
+	</script>	
+
+	<div class="button-container">
+		<button class="btn btn-other" onclick="window.location.href='../index.html'">Retour sur l'index</button>
+	</div>
+</body>
+</html>

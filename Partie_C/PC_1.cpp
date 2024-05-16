@@ -19,49 +19,55 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
     config.error_pages = error_pages;
     config.routes = routes;
 
-    //init test
-    config.server_name = "sitetest.com";
-    config.port = 3003;
-    config.client_max_body_size = 20480;
-
-    config.error_pages[404] = "webpage/error_pages/error404.html";
-    config.error_pages[405] = "webpage/error_pages/error405.html";
-
-    std::map<std::string, std::string> details1;
-    details1["index"] = "index.html";
-    details1["methods"] = "GET POST";
-    details1["root"] = "./webpage/sitetest/index.html";
-    config.routes["/"] = details1;
-
-    std::map<std::string, std::string> details2;
-    details2["methods"] = "GET";
-    details2["redirection"] = "https://signin.intra.42.fr";
-    config.routes["intra42"] = details2;
-
-
-
     init();
     status = 200;
 
-    size_t lastSlashPos = config.routes["/"]["root"].find_last_of("/");
-    basePath = config.routes["/"]["root"].substr(0, lastSlashPos);
+    //size_t lastSlashPos = config.routes["/"]["root"].find_last_of("/");
+    basePath = config.routes["/"]["root"];
 
     //-------------------- Partie Request --------------------
-    std::cout << "test\n";
+    std::cout << "----> BASEPATH : " << basePath <<"\n";
 
-    const int bufferSize = 1024;
+    const int bufferSize = 30000;
     char request_buffer[bufferSize] = {0};
 
     // Lecture de la requête du client
-    int bytesReceived = read(client_socket, request_buffer, bufferSize - 1);
-    if (bytesReceived < 1)
-    {
-        std::cout << "Erreur de lecture ou connexion fermée par le client." << std::endl;
+    int bytesReceived = 0;
+    int totalBytesRead = 0;
+    memset(request_buffer, 0, bufferSize);  // Nettoyer le buffer
+
+    while (totalBytesRead < bufferSize - 1) {  // Assurer que l'on ne déborde pas le buffer
+        bytesReceived = read(client_socket, request_buffer + totalBytesRead, bufferSize - 1 - totalBytesRead);
+        if (bytesReceived > 0) {
+            totalBytesRead += bytesReceived;
+            request_buffer[totalBytesRead] = '\0';  // Assurer que le buffer est toujours null-terminated
+
+            // Vérifier si la fin des headers HTTP a été reçue
+            if (strstr(request_buffer, "\r\n\r\n") != NULL) {
+                break; // Fin des headers HTTP détectée
+            }
+        } else if (bytesReceived == 0) {
+            std::cout << "La connexion a été fermée par le client." << std::endl;
+            return; // Connexion fermée par le client, sortie de la fonction
+        } else {
+            std::cerr << "Erreur de lecture." << std::endl;
+            return; // Erreur lors de la lecture des données
+        }
+    }
+
+    // Contrôle après sortie de la boucle
+    if (bytesReceived <= 0) {
+        std::cerr << "Aucune donnée valide reçue ou connexion fermée prématurément." << std::endl;
         return;
+    }
+
+    if (strstr(request_buffer, "\r\n\r\n") == NULL) {
+        std::cerr << "Les headers HTTP complets n'ont pas été reçus, même si les données ont été lues." << std::endl;
     }
 
 
     std::cout << std::endl << std::endl << "-------------------> Request" << std::endl << request_buffer << std::endl;
+    std::cout << std::endl << std::endl << "-------------------> Request END\n\n";
 
     try
     {
@@ -70,14 +76,14 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 
     //-------------------- Partie Execution --------------------
 
-        if(isCGI())
+        if(method == "DELETE")
+            method_DELETE();
+        else if(isCGI())
             execute_cgi();
-        else if(method == "GET")
+        else if(method == "GET" )
             method_GET();
         else if(method == "POST")
             method_POST();
-        else if(method == "DELETE")
-            method_DELETE();
 
     }
 
@@ -89,14 +95,14 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
     //-------------------- Partie Response --------------------
 
      // Utilisez basePath de la configuration pour trouver les fichiers
-    std::string requestURI = uri == "/" ? config.routes["/"]["root"] : basePath + uri;
+    std::string requestURI = uri == "/" ? config.routes["/"]["root"] + "/" + config.routes["/"]["index"] : basePath + uri;
     std::string filePath = requestURI;
     std::ifstream fileStream(filePath.c_str());
     std::string httpResponse;
 
     std::cout << requestURI << std::endl;
 
-    if (method == "GET")
+    if (method == "GET" && status < 300)
     {
         if (!fileStream.is_open())
         {
@@ -112,7 +118,7 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 
     final_status(config);
 
-    if (isCGI())
+    if (isCGI() && (status == 200 || status == 201))
         httpResponse = "HTTP/1.1 " + toString(status) + " " + _statusCodes[status] + "\r\n" +
            "Content-Length: " + toString(cgi_content.length()) + "\r\n" +
            "Content-Type: text/html; charset=UTF-8\r\n" +  // Assurez-vous d'inclure Content-Type si nécessaire
@@ -140,8 +146,8 @@ void Part_C::final_status(s_server2& config)
 {
     if (status != 200 && status != 201)
     {
-        if (status == 404 || status == 405)
-        {
+        if (/*status == 400 || status == 403 || */status == 404 || status == 405/*  || status == 500 || status == 502 || status == 503*/)
+        {    
             std::string filePath = "./" + config.error_pages[status];
             std::ifstream fileStream(filePath.c_str());
 
@@ -154,7 +160,7 @@ void Part_C::final_status(s_server2& config)
         else
         {
             contentType = "text/plain";
-            content = toString(status) + " : " + _statusCodes[status];
+            content = toString(status) + " : " + _statusCodes[status] + "\nyep its custom mazafaka (from Zalius, pls dont hurt us we are good friend :D)";
         }
     }
 }
@@ -175,6 +181,7 @@ void Part_C::init()
 	_statusCodes[405] = "Method Not Allowed";
 	_statusCodes[409] = "Conflict";
 	_statusCodes[413] = "Payload Too Large";
+    _statusCodes[415] = "Unsupported Media Type";
 	_statusCodes[500] = "Internal Server Error";
 	_statusCodes[501] = "Not Implemented";
 	_statusCodes[505] = "HTTP Version Not Supported";
