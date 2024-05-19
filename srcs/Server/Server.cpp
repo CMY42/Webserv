@@ -124,6 +124,9 @@ void Server::handleConnections()
 
 void Server::handleClient(int client_socket)
 {
+	// Dans le main La fonction handleClientThread est utilisée pour traiter chaque connexion client dans un thread séparé
+	// Ensuite la methode handleClient est appelée pour traiter chaque connexion client dans le thread principal
+	// Voir dans la Partie C d'ou viennent les problemes de reponses
 	std::cout << std::endl << "-------------------- Partie C --------------------" << std::endl << std::endl;
 	Part_C part_c(client_socket, this->server_name, this->port, this->client_max_body_size, this->error_pages, this->routes);
 }
