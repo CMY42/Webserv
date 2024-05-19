@@ -18,7 +18,8 @@ Server server;
 struct ThreadData
 {
 	int client_socket;
-	// Ajoutez d'autres données nécessaires ici
+	// Mettre la strucutre ailleurs?
+	//Ajouter d'autres données si necessaire ??
 };
 
 // Méthode pour gérer une connexion dans un thread
@@ -38,7 +39,6 @@ void signal_handler(int signal)
 	if (signal == SIGINT || signal == SIGTERM)
 	{
 		std::cout << "Signal " << signal << " received. Shutting down server..." << std::endl;
-		// Arrêter le serveur
 		server.stop();
 		exit(0);
 	}
