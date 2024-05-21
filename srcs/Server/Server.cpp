@@ -128,5 +128,10 @@ void Server::handleClient(int client_socket)
 	// Ensuite la methode handleClient est appelée pour traiter chaque connexion client dans le thread principal
 	// Voir dans la Partie C d'ou viennent les problemes de reponses
 	std::cout << std::endl << "-------------------- Partie C --------------------" << std::endl << std::endl;
+	std::cout << "Client socket: " << client_socket << std::endl;
+	std::cout << "Server name: " << this->server_name << std::endl;
+	std::cout << "Port: " << this->port << std::endl;
+	std::cout << "Client max body size: " << this->client_max_body_size << std::endl;
+	std::cout << "Error pages: " << std::endl;
 	Part_C part_c(client_socket, this->server_name, this->port, this->client_max_body_size, this->error_pages, this->routes);
 }
