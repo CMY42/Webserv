@@ -1,3 +1,4 @@
+// server.cpp
 #include "Server.hpp"
 #include "InitializeServer.hpp"
 #include <iostream>
@@ -20,6 +21,14 @@ void Server::start()
 	if (server_fd == -1)
 	{
 		std::cerr << "Error creating socket" << std::endl;
+		return;
+	}
+
+	int opt = 1;
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+	{
+		std::cerr << "Error setting socket options" << std::endl;
+		close(server_fd);
 		return;
 	}
 
@@ -66,67 +75,8 @@ void Server::stop()
 	}
 }
 
-void Server::handleConnections()
-{
-	// Tableau de structures pollfd pour stocker les descripteurs de fichiers à surveiller
-	std::vector<pollfd> fds;
-	pollfd listening_fd;
-	listening_fd.fd = _listening_socket;
-	listening_fd.events = POLLIN;
-	listening_fd.revents = 0;
-	fds.push_back(listening_fd);
-
-	// Boucle infinie pour attendre les connexions et les gérer
-	while (true)
-	{
-		// Utilisation de poll() pour attendre les événements d'entrée/sortie
-		int activity = poll(&fds[0], fds.size(), -1);
-		if (activity < 0)
-		{
-			std::cerr << "Error in poll()" << std::endl;
-			continue;
-		}
-
-		// Si le socket d'écoute a une activité
-		if (fds[0].revents & POLLIN)
-		{
-			// Accepter la nouvelle connexion
-			int client_socket = accept(_listening_socket, NULL, NULL);
-			if (client_socket < 0)
-			{
-				std::cerr << "Error accepting connection" << std::endl;
-				continue;
-			}
-
-			// Ajouter le descripteur de fichier du client à surveiller
-			pollfd client_fd;
-			client_fd.fd = client_socket;
-			client_fd.events = POLLIN;
-			client_fd.revents = 0;
-			fds.push_back(client_fd);
-		}
-
-		// Parcourir les descripteurs de fichiers surveillés pour les clients
-		for (size_t i = 1; i < fds.size(); ++i)
-		{
-			if (fds[i].revents & POLLIN) // Si le descripteur est prêt en lecture
-			{
-				// Gérer la connexion client
-				handleClient(fds[i].fd);
-
-				// Supprimer le descripteur de fichier du client surveillé
-				close(fds[i].fd);
-				fds.erase(fds.begin() + i);
-			}
-		}
-	}
-}
-
 void Server::handleClient(int client_socket)
 {
-	// Dans le main La fonction handleClientThread est utilisée pour traiter chaque connexion client dans un thread séparé
-	// Ensuite la methode handleClient est appelée pour traiter chaque connexion client dans le thread principal
-	// Voir dans la Partie C d'ou viennent les problemes de reponses
 	std::cout << std::endl << "-------------------- Partie C --------------------" << std::endl << std::endl;
 	std::cout << "Client socket: " << client_socket << std::endl;
 	std::cout << "Server name: " << this->server_name << std::endl;

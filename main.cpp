@@ -1,3 +1,4 @@
+// main.cpp
 #include <iostream>
 #include <csignal>
 #include <vector>
@@ -18,9 +19,7 @@ Server server;
 struct ThreadData
 {
 	int client_socket;
-	Server* server_instance; // Ajouter un pointeur vers l'instance de Server
-	// Mettre la strucutre ailleurs?
-	//Ajouter d'autres données si necessaire ??
+	Server* server_instance;
 };
 
 // Méthode pour gérer une connexion dans un thread
@@ -37,7 +36,6 @@ void* handleClientThread(void* arg)
 	delete data;
 	pthread_exit(NULL);
 }
-
 
 void signal_handler(int signal)
 {
@@ -67,79 +65,73 @@ int main(int argc, char *argv[])
 		ConfigCheck config(config_file);
 		ConfigParse parse(config);
 
-		// Création d'une instance de serveur pour chaque configuration de serveur
 		const std::vector<t_server>& servers = parse.getServersParsed();
 		std::vector<Server> serverInstances;
 		for (size_t i = 0; i < servers.size(); ++i)
 		{
 			Server newServer;
-			initializeServer(newServer, servers[i]); // Passer un seul serveur à la fois
-			newServer.start(); // Démarrer le serveur
+			initializeServer(newServer, servers[i]);
+			newServer.start();
 			serverInstances.push_back(newServer);
 		}
 
-		// Gestionnaire de signal
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
 
-		// Tableau de threads pour gérer les connexions
 		std::vector<pthread_t> threads;
 
-	// Boucle pour accepter les connexions et les gérer
-	while (true)
-	{
-		for (size_t i = 0; i < serverInstances.size(); ++i)
+		while (true)
 		{
-			// Utilisation de poll() pour attendre les événements d'entrée/sortie
-			std::vector<pollfd> fds;
-			pollfd listening_fd;
-			listening_fd.fd = serverInstances[i].getListeningSocket();
-			listening_fd.events = POLLIN;
-			listening_fd.revents = 0;
-			fds.push_back(listening_fd);
-
-			int activity = poll(&fds[0], fds.size(), -1);
-			if (activity < 0)
+			for (size_t i = 0; i < serverInstances.size(); ++i)
 			{
-				std::cerr << "Error in poll()" << std::endl;
-				continue;
-			}
+				std::vector<pollfd> fds;
+				pollfd listening_fd;
+				listening_fd.fd = serverInstances[i].getListeningSocket();
+				listening_fd.events = POLLIN;
+				listening_fd.revents = 0;
+				fds.push_back(listening_fd);
 
-			// Si le socket d'écoute a une activité
-			if (fds[0].revents & POLLIN)
-			{
-				// Accepter la nouvelle connexion
-				int client_socket = accept(serverInstances[i].getListeningSocket(), NULL, NULL);
-				if (client_socket < 0)
+				int activity = poll(&fds[0], fds.size(), 100); // Timeout de 100 millisecondes
+				if (activity < 0)
 				{
-					std::cerr << "Error accepting connection" << std::endl;
+					std::cerr << "Error in poll()" << std::endl;
 					continue;
 				}
 
-				// Configurer le socket en mode non bloquant
-				fcntl(client_socket, F_SETFL, O_NONBLOCK);
+				if (activity == 0)
+				{
+					continue; // Timeout, pas d'activité
+				}
 
-				// Créer un thread pour gérer la connexion de manière asynchrone
-				pthread_t thread;
-				ThreadData* data = new ThreadData;
-				data->client_socket = client_socket;
-				data->server_instance = &serverInstances[i];
-				pthread_create(&thread, NULL, handleClientThread, (void*)data);
-				threads.push_back(thread);
+				if (fds[0].revents & POLLIN)
+				{
+					int client_socket = accept(serverInstances[i].getListeningSocket(), NULL, NULL);
+					if (client_socket < 0)
+					{
+						std::cerr << "Error accepting connection" << std::endl;
+						continue;
+					}
+
+					fcntl(client_socket, F_SETFL, O_NONBLOCK);
+
+					pthread_t thread;
+					ThreadData* data = new ThreadData;
+					data->client_socket = client_socket;
+					data->server_instance = &serverInstances[i];
+					pthread_create(&thread, NULL, handleClientThread, (void*)data);
+					threads.push_back(thread);
+				}
 			}
-	}
 
-	// Supprimer les threads terminés de la liste
-	for (std::vector<pthread_t>::iterator it = threads.begin(); it != threads.end(); )
-	{
-		pthread_t thread = *it;
-		if (pthread_tryjoin_np(thread, NULL) == 0)
-			it = threads.erase(it);
-		else
-			++it;
-	}
-}
-
+			for (std::vector<pthread_t>::iterator it = threads.begin(); it != threads.end(); )
+			{
+				pthread_t thread = *it;
+				if (pthread_tryjoin_np(thread, NULL) == 0)
+					it = threads.erase(it);
+				else
+					++it;
+			}
+		}
 	}
 	catch (std::exception &e)
 	{
