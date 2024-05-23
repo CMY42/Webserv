@@ -35,6 +35,7 @@ class ConfigParse
 			void						parseRoutes(std::string line, t_server &data);
 			bool						isAllDigits(const std::string& str);
 			std::vector<t_server>		parsed_servers;
+			std::vector<int>            used_ports;
 
 	public:
 			ConfigParse(ConfigCheck config);

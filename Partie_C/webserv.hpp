@@ -22,16 +22,6 @@
 #include "PC_1.hpp"
 
 
-// Simule une structure de configuration simple
-/*struct ServerConfig
-{
-    int port = 8080;
-    long unsigned int max_body_size = 9999;
-    
-    std::string basePath = "./the_ultimate_webserv";
-    std::string index = "/index.html";
-};*/
-
 // structure du serveur VRé
 typedef struct s_server2
 {
@@ -46,6 +36,6 @@ typedef struct s_server2
 
 //  http://localhost:8080
 //  g++ -o server test.cpp
-//  ./server 
+//  ./server
 
 #endif

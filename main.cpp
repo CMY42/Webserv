@@ -47,6 +47,25 @@ void signal_handler(int signal)
 	}
 }
 
+
+bool is_thread_finished(pthread_t thread)
+{
+	int err = pthread_kill(thread, 0);
+	if (err == 0)
+	{
+		return false;
+	}
+	else if (err == ESRCH)
+	{
+		return true;
+	}
+	else
+	{
+		std::cerr << "Erreur lors de la vérification du thread: " << err << std::endl;
+		return false;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	std::string config_file;
@@ -126,10 +145,15 @@ int main(int argc, char *argv[])
 			for (std::vector<pthread_t>::iterator it = threads.begin(); it != threads.end(); )
 			{
 				pthread_t thread = *it;
-				if (pthread_tryjoin_np(thread, NULL) == 0)
+				if (is_thread_finished(thread))
+				{
+					pthread_join(thread, NULL);
 					it = threads.erase(it);
+				}
 				else
+				{
 					++it;
+				}
 			}
 		}
 	}
