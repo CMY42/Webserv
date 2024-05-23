@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstring>
 #include <unistd.h>
+#include <poll.h>
 
 template<typename T>
 std::string toString(const T& value)
@@ -32,36 +33,56 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 	const int bufferSize = 30000;
 	char request_buffer[bufferSize] = {0};
 
-	int bytesReceived = 0;
 	int totalBytesRead = 0;
 	memset(request_buffer, 0, bufferSize);
 
+	pollfd client_fd;
+	client_fd.fd = client_socket;
+	client_fd.events = POLLIN | POLLOUT;
+
 	while (totalBytesRead < bufferSize - 1)
 	{
-		bytesReceived = read(client_socket, request_buffer + totalBytesRead, bufferSize - 1 - totalBytesRead);
-		if (bytesReceived > 0)
+		int poll_result = poll(&client_fd, 1, 100); // Timeout de 100 millisecondes
+		if (poll_result > 0)
 		{
-			totalBytesRead += bytesReceived;
-			request_buffer[totalBytesRead] = '\0';
-
-			if (strstr(request_buffer, "\r\n\r\n") != NULL)
+			if (client_fd.revents & POLLIN)
 			{
-				break;
+				int bytesReceived = read(client_socket, request_buffer + totalBytesRead, bufferSize - 1 - totalBytesRead);
+				if (bytesReceived > 0)
+				{
+					totalBytesRead += bytesReceived;
+					request_buffer[totalBytesRead] = '\0';
+
+					if (strstr(request_buffer, "\r\n\r\n") != NULL)
+					{
+						break;
+					}
+				}
+				else if (bytesReceived == 0)
+				{
+					std::cout << "La connexion a été fermée par le client." << std::endl;
+					return;
+				}
+				else
+				{
+					std::cerr << "Erreur de lecture." << std::endl;
+					return;
+				}
 			}
 		}
-		else if (bytesReceived == 0)
+		else if (poll_result == 0)
 		{
-			std::cout << "La connexion a été fermée par le client." << std::endl;
-			return;
+			// Timeout, pas d'activité
+			continue;
 		}
 		else
 		{
-			std::cerr << "Erreur de lecture." << std::endl;
+			std::cerr << "Erreur dans poll()" << std::endl;
 			return;
 		}
 	}
 
-	if (bytesReceived <= 0)
+	if (totalBytesRead <= 0)
 	{
 		std::cerr << "Aucune donnée valide reçue ou connexion fermée prématurément." << std::endl;
 		return;
@@ -132,8 +153,38 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 
 	std::cout << std::endl << std::endl << "-------------------> Response" << std::endl << httpResponse << std::endl;
 
-	send(client_socket, httpResponse.c_str(), httpResponse.length(), 0);
+	while (true)
+	{
+		int poll_result = poll(&client_fd, 1, 100); // Timeout de 100 millisecondes
+		if (poll_result > 0)
+		{
+			if (client_fd.revents & POLLOUT)
+			{
+				ssize_t bytesSent = send(client_socket, httpResponse.c_str(), httpResponse.length(), 0);
+				if (bytesSent == -1)
+				{
+					std::cerr << "Erreur d'écriture." << std::endl;
+					return;
+				}
+				break; // Successfully sent the response
+			}
+		}
+		else if (poll_result == 0)
+		{
+			// Timeout, pas d'activité
+			continue;
+		}
+		else
+		{
+			std::cerr << "Erreur dans poll()" << std::endl;
+			return;
+		}
+	}
+
+	close(client_socket);
 }
+
+
 
 void Part_C::final_status(s_server2& config)
 {

@@ -1,4 +1,3 @@
-// main.cpp
 #include <iostream>
 #include <csignal>
 #include <vector>
@@ -47,7 +46,6 @@ void signal_handler(int signal)
 	}
 }
 
-
 bool is_thread_finished(pthread_t thread)
 {
 	int err = pthread_kill(thread, 0);
@@ -62,7 +60,7 @@ bool is_thread_finished(pthread_t thread)
 	else
 	{
 		std::cerr << "Erreur lors de la vérification du thread: " << err << std::endl;
-		return false;
+	return false;
 	}
 }
 
@@ -97,32 +95,29 @@ int main(int argc, char *argv[])
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
 
+		std::vector<pollfd> fds;
+		for (size_t i = 0; i < serverInstances.size(); ++i)
+		{
+			pollfd listening_fd;
+			listening_fd.fd = serverInstances[i].getListeningSocket();
+			listening_fd.events = POLLIN;
+			fds.push_back(listening_fd);
+		}
+
 		std::vector<pthread_t> threads;
 
 		while (true)
 		{
+			int activity = poll(fds.data(), fds.size(), 100); // Timeout de 100 millisecondes
+			if (activity < 0)
+			{
+				std::cerr << "Error in poll()" << std::endl;
+				continue;
+			}
+
 			for (size_t i = 0; i < serverInstances.size(); ++i)
 			{
-				std::vector<pollfd> fds;
-				pollfd listening_fd;
-				listening_fd.fd = serverInstances[i].getListeningSocket();
-				listening_fd.events = POLLIN;
-				listening_fd.revents = 0;
-				fds.push_back(listening_fd);
-
-				int activity = poll(&fds[0], fds.size(), 100); // Timeout de 100 millisecondes
-				if (activity < 0)
-				{
-					std::cerr << "Error in poll()" << std::endl;
-					continue;
-				}
-
-				if (activity == 0)
-				{
-					continue; // Timeout, pas d'activité
-				}
-
-				if (fds[0].revents & POLLIN)
+				if (fds[i].revents & POLLIN)
 				{
 					int client_socket = accept(serverInstances[i].getListeningSocket(), NULL, NULL);
 					if (client_socket < 0)

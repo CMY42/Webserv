@@ -23,7 +23,8 @@ bool isPathLengthValid(const std::string &path, size_t maxLength)
 
 //----------------------------------------------------------------------------------------------------------
 
-void printMap(const std::map<std::string, std::string>& post_file_map) {
+void printMap(const std::map<std::string, std::string>& post_file_map)
+{
 	// Vérification si la map est vide
 	if (post_file_map.empty())
 	{
@@ -43,7 +44,7 @@ void printMap(const std::map<std::string, std::string>& post_file_map) {
 
 bool isExtensionAllowed(const std::string& uri)
 {
-// Tableau des extensions de fichier autorisées
+	// Tableau des extensions de fichier autorisées
 	const char* allowedExtensions[] = {".html", ".css", ".js", ".jpg", ".png", ".txt", ".json", ".pl"};
 	const int numExtensions = 8; // Nombre d'extensions dans le tableau
 
@@ -129,11 +130,7 @@ void Part_C::parse(const std::string& requestText, s_server2& config)
 		if (colonPos != std::string::npos && colonPos != 0)
 		{ // Vérifie aussi que ':' n'est pas le premier caractère
 			std::string headerName = line.substr(0, colonPos);
-			// Assurez-vous qu'il y a un espace après ':' avant de commencer la valeur
 			std::string headerValue = (colonPos + 2 < line.size()) ? line.substr(colonPos + 2) : "";
-
-			// Trim leading and trailing whitespaces from headerName and headerValue if necessary
-			// ...
 
 			if (!headerName.empty() && !headerValue.empty())
 			{ // Vérifie que ni le nom ni la valeur de l'en-tête ne sont vides
@@ -231,7 +228,8 @@ std::string Part_C::getMultiPartBoundary()
 	boundaryPos += boundaryPrefix.length();
 	size_t boundaryEnd = content_type.find(";", boundaryPos);
 
-	if (boundaryEnd == std::string::npos) {
+	if (boundaryEnd == std::string::npos)
+	{
 		// Boundary is at the end of the string
 		return content_type.substr(boundaryPos);
 	}
@@ -250,9 +248,7 @@ struct FormData
 
 void Part_C::parseMultiPartBody(std::string bodyLines)
 {
-	//std::cout << LOG_COLOR << "[LOG] " << RESET << "Content-Type: multipart/form-data" << std::endl;
 	std::string boundary = getMultiPartBoundary();
-	//std::string test = "123456789";
 
 	std::vector<FormData> formDataParts;
 	std::size_t pos = 0, lastPos = 0;
@@ -265,17 +261,15 @@ void Part_C::parseMultiPartBody(std::string bodyLines)
 			break;
 		}
 
-		// Trim the leading boundary and trailing new line
-		std::size_t partStart = pos + boundary.length() + 2; // Skip the boundary and the newline
+		std::size_t partStart = pos + boundary.length() + 2;
 		std::size_t partEnd = endOfPart;
 
-		// Check if it's the last part
 		if (bodyLines.substr(partEnd, boundary.length() + 2) == boundary + "--")
 		{
-			partEnd -= 2; // Adjust to avoid the '--' at the end of the last boundary
+			partEnd -= 2;
 		}
 
-		std::string part = bodyLines.substr(partStart, partEnd - partStart - 2); // Subtract 2 to remove the trailing CR LF
+		std::string part = bodyLines.substr(partStart, partEnd - partStart - 2);
 
 		// Separate headers and content
 		std::size_t headerEnd = part.find("\r\n\r\n");
@@ -329,10 +323,7 @@ std::map<std::string, std::string> Part_C::parseUrlEncoded(const std::string& da
 			std::string key = pair.substr(0, delimiterPos);
 			std::string value = pair.substr(delimiterPos + 1);
 
-			// Remplacer '+' par ' ' dans value
 			std::replace(value.begin(), value.end(), '+', ' ');
-
-			// Décoder les caractères en pourcentage ici si nécessaire
 
 			result[key] = value;
 		}
@@ -354,7 +345,7 @@ std::map<std::string, std::string> parseUrlEncodedData(const std::string& data)
 		{
 			std::string key = pair.substr(0, equalPos);
 			std::string value = pair.substr(equalPos + 1);
-			result[key] = value; // Dans une version complète, vous devriez décoder les pourcentages ici.
+			result[key] = value;
 		}
 	}
 
