@@ -40,6 +40,10 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 	client_fd.fd = client_socket;
 	client_fd.events = POLLIN | POLLOUT;
 
+	int contentLength = -1;
+	bool headersComplete = false;
+	char *headersEnd = NULL;
+
 	while (totalBytesRead < bufferSize - 1)
 	{
 		int poll_result = poll(&client_fd, 1, 100); // Timeout de 100 millisecondes
@@ -53,7 +57,24 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 					totalBytesRead += bytesReceived;
 					request_buffer[totalBytesRead] = '\0';
 
-					if (strstr(request_buffer, "\r\n\r\n") != NULL)
+					if (!headersComplete)
+					{
+						// Vérifier la fin des en-têtes
+						headersEnd = strstr(request_buffer, "\r\n\r\n");
+						if (headersEnd != NULL)
+						{
+							headersComplete = true;
+
+							// Extraire la longueur du contenu si disponible
+							char *contentLengthStr = strstr(request_buffer, "Content-Length: ");
+							if (contentLengthStr != NULL)
+							{
+								contentLength = atoi(contentLengthStr + strlen("Content-Length: "));
+							}
+						}
+					}
+
+					if (headersComplete && (contentLength == -1 || totalBytesRead >= (headersEnd - request_buffer) + 4 + contentLength))
 					{
 						break;
 					}
@@ -74,7 +95,7 @@ Part_C::Part_C(int client_socket, std::string server_name, int port, size_t clie
 		{
 			// Timeout, pas d'activité
 			continue;
-		}
+			}
 		else
 		{
 			std::cerr << "Erreur dans poll()" << std::endl;
